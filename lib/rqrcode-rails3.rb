@@ -12,19 +12,30 @@ module RQRCode
 
   extend SizeCalculator
 
-  ActionController::Renderers.add :qrcode do |string, options|
+  ActionController::Renderers.add :qrcode do |rqrcode_object, options|
     format = self.request.format.symbol
-    size   = options[:size]  || RQRCode.minimum_qr_size_from_string(string)
-    level  = options[:level] || :h
 
-    qrcode = RQRCode::QRCode.new(string, :size => size, :level => level)
-    svg    = RQRCode::Renderers::SVG::render(qrcode, options)
+    svg = if rqrcode_object.is_a? RQRCode::QRCode
+      RQRCode::Renderers::SVG::render rqrcode_object
+    else
+      size   = options[:size]  || RQRCode.minimum_qr_size_from_string(string)
+      level  = options[:level] || :h
 
-    data = \
-    if format && format == :svg
+      qrcode = RQRCode::QRCode.new(string, :size => size, :level => level)
+      RQRCode::Renderers::SVG::render qrcode, options
+    end
+
+    data = if format && format == :svg
       svg
     else
-      image = MiniMagick::Image.read(svg) { |i| i.format "svg" }
+      # This is what MiniMagick::Image.read does under the hood but with `validate` set to `true` by default
+      str_io = StringIO.new svg
+      image = MiniMagick::Image.create("svg", false) do |file|
+        while chunk = str_io.read(8192)
+          file.write chunk
+        end
+      end
+
       image.format format
       image.to_blob
     end
