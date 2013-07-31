@@ -35,7 +35,7 @@ module RQRCode
                 tmp << %{<td/>}
               end
             end
-            result << "<tr>#{tmp.join}</tr>"
+            result << "<tr>#{tmp.join "\n"}</tr>"
           end
 
           table = [open_tag, result, close_tag].flatten.join("\n")
